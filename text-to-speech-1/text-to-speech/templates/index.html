@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Application</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to right bottom, #2a2d34, #1e212d); /* Blue-gray gradient background */
+            color: #ffffff;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+        }
+        .container {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to right bottom, #ffffff, #f0f4f8); /* Light gradient for container */
+            padding: 30px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            border-radius: 15px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+            margin: 20px auto;
+            max-width: 1000px; /* Limit container width for large screens */
+        }
+        h1, h2 {
+            text-align: center;
+            color: #2a2d34;
+            margin-bottom: 20px;
+            transition: color 0.3s ease;
+        }
+        h1:hover, h2:hover {
+            color: #007bff;
+        }
+        .section {
+            margin-bottom: 40px;
+            background: linear-gradient(to right bottom, #ffffff, #e6e9ef); /* Lighter gradient for sections */
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.3s ease, background-color 0.3s ease;
+        }
+        .section:hover {
+            background: linear-gradient(to right bottom, #e6e9ef, #ffffff); /* Gradient hover effect */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+        textarea, select, input[type="text"] {
+            width: calc(100% - 30px);
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #cccccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease-in-out;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        textarea:focus, select:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease-in-out;
+            font-size: 16px;
+            margin-top: 10px;
+            display: inline-block;
+        }
+        button:hover {
+            background-color: #0056b3;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        button:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        }
+        audio {
+            display: block;
+            margin: 20px auto;
+            width: 80%; /* Adjusted to be smaller */
+            max-width: 400px; /* Maximum width for larger screens */
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+            transition: all 0.3s ease-in-out;
+        }
+        a:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+        .button-group {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Audio Application</h1>
+        <div class="button-group">
+            <a href="{{ url_for('recorded_files') }}" class="button">View Recorded Files</a>
+        </div>
+        
+
+        <div class="section">
+            <h2>Text to Speech</h2>
+            <textarea id="text" rows="4" placeholder="Enter text here..."></textarea>
+            <select id="voice">
+                {% for voice in voices %}
+                <option value="{{ voice }}">{{ voice }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="tts_output_file" placeholder="Enter output file name (default: output.mp3)">
+            <div class="button-group">
+                <button onclick="convertTextToSpeech()">Convert Text to Speech</button>
+            </div>
+            <p id="tts_message"></p>
+            <audio id="tts_audio" controls></audio>
+            <a id="tts_download" href="#" download>Download</a>
+        </div>
+
+        <div class="section">
+            <h2>Record Audio</h2>
+            <input type="text" id="record_output_file" placeholder="Enter output file name (default: mic_input.wav)">
+            <div class="button-group">
+                <button onclick="startRecording()">Start Recording</button>
+                <button onclick="stopRecording()">Stop Recording</button>
+            </div>
+            <p id="record_message"></p>
+            <audio id="record_audio" controls></audio>
+            <a id="record_download" href="#" download>Download</a>
+        </div>
+    </div>
+
+    <script>
+        async function convertTextToSpeech() {
+            const text = document.getElementById('text').value;
+            const voice = document.getElementById('voice').value;
+            let output_file = document.getElementById('tts_output_file').value;
+            if (!output_file) {
+                output_file = 'output.mp3';
+            }
+
+            const response = await fetch('/tts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `text=${encodeURIComponent(text)}&voice=${encodeURIComponent(voice)}&output_file=${encodeURIComponent(output_file)}`
+            });
+
+            const result = await response.json();
+            document.getElementById('tts_message').textContent = result.message;
+            document.getElementById('tts_audio').src = result.file_url;
+            document.getElementById('tts_download').href = result.file_url;
+            document.getElementById('tts_download').download = output_file;
+        }
+
+        async function startRecording() {
+            const response = await fetch('/record/start', {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+            document.getElementById('record_message').textContent = result.message;
+        }
+
+        async function stopRecording() {
+            let output_file = document.getElementById('record_output_file').value;
+            if (!output_file) {
+                output_file = 'mic_input.wav';
+            }
+
+            const response = await fetch('/record/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `output_file=${encodeURIComponent(output_file)}`
+            });
+
+            const result = await response.json();
+            document.getElementById('record_message').textContent = result.message;
+            document.getElementById('record_audio').src = result.file_url;
+            document.getElementById('record_download').href = result.file_url;
+            document.getElementById('record_download').download = output_file;
+        }
+    </script>
+</body>
+</html>
